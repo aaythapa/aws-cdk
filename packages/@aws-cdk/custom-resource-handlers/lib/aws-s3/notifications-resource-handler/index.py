@@ -43,7 +43,7 @@ def handle_unmanaged(bucket, stack_id, request_type, notification_configuration,
   external_notifications = {}
   existing_notifications = s3.get_bucket_notification_configuration(Bucket=bucket)
   for t in CONFIGURATION_TYPES:
-    if request_type == 'Update':
+    if request_type in ['Update', 'Delete']:
         ids = [with_id(n) for n in old.get(t, [])]
         old_incoming_ids = [n['Id'] for n in ids]
         # if the notification was created by us, we know what id to expect so we can filter by it.
