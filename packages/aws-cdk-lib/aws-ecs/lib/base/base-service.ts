@@ -1051,7 +1051,7 @@ export abstract class BaseService extends Resource
       resources: [logGroupArn],
     }));
 
-    if (logConfiguration?.s3Bucket?.bucketName) {
+    if (logConfiguration?.s3Bucket?.attrBucketName) {
       this.taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
         actions: [
           's3:GetBucketLocation',
@@ -1062,14 +1062,14 @@ export abstract class BaseService extends Resource
         actions: [
           's3:PutObject',
         ],
-        resources: [`arn:${this.stack.partition}:s3:::${logConfiguration.s3Bucket.bucketName}/*`],
+        resources: [`arn:${this.stack.partition}:s3:::${logConfiguration.s3Bucket.attrBucketName}/*`],
       }));
       if (logConfiguration.s3EncryptionEnabled) {
         this.taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
           actions: [
             's3:GetEncryptionConfiguration',
           ],
-          resources: [`arn:${this.stack.partition}:s3:::${logConfiguration.s3Bucket.bucketName}`],
+          resources: [`arn:${this.stack.partition}:s3:::${logConfiguration.s3Bucket.attrBucketName}`],
         }));
       }
     }

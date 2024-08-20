@@ -1,7 +1,6 @@
 import { Construct } from 'constructs';
-import { CfnSubscription } from './sns.generated';
+import { CfnSubscription, ICfnTopic } from './sns.generated';
 import { SubscriptionFilter } from './subscription-filter';
-import { ITopic } from './topic-base';
 import { PolicyStatement, ServicePrincipal } from '../../aws-iam';
 import { IQueue } from '../../aws-sqs';
 import { Resource } from '../../core';
@@ -68,6 +67,7 @@ export interface SubscriptionOptions {
    */
   readonly subscriptionRoleArn?: string;
 }
+
 /**
  * Properties for creating a new subscription
  */
@@ -75,7 +75,7 @@ export interface SubscriptionProps extends SubscriptionOptions {
   /**
    * The topic to subscribe to.
    */
-  readonly topic: ITopic;
+  readonly topic: ICfnTopic;
 }
 
 /**
@@ -85,7 +85,6 @@ export interface SubscriptionProps extends SubscriptionOptions {
  * this class.
  */
 export class Subscription extends Resource {
-
   /**
    * The DLQ associated with this subscription if present.
    */
@@ -145,7 +144,7 @@ export class Subscription extends Resource {
     new CfnSubscription(this, 'Resource', {
       endpoint: props.endpoint,
       protocol: props.protocol,
-      topicArn: props.topic.topicArn,
+      topicArn: props.topic.attrTopicArn,
       rawMessageDelivery: props.rawMessageDelivery,
       filterPolicy,
       filterPolicyScope: this.filterPolicyWithMessageBody ? 'MessageBody' : undefined,
@@ -168,7 +167,7 @@ export class Subscription extends Resource {
       actions: ['sqs:SendMessage'],
       principals: [new ServicePrincipal('sns.amazonaws.com')],
       conditions: {
-        ArnEquals: { 'aws:SourceArn': props.topic.topicArn },
+        ArnEquals: { 'aws:SourceArn': props.topic.attrTopicArn },
       },
     }));
 

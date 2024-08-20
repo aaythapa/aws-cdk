@@ -257,7 +257,7 @@ export class EmrContainersStartJobRun extends sfn.TaskStateBase implements iam.I
 
   private assignLogBucket = () : any => {
     if (this.props.monitoring?.logBucket) {
-      return (this.props.monitoring?.logBucket);
+      return (s3.Bucket.fromCfnBucket(this.props.monitoring.logBucket));
     } else {
       return (this.props.monitoring?.logging ? new s3.Bucket(this, 'Monitoring Bucket') : undefined);
     }
@@ -612,7 +612,7 @@ export interface Monitoring {
    *
    * @default - if `logging` is manually set to `true` and a `logBucket` is not provided, a `logBucket` will be automatically generated`.
    */
-  readonly logBucket?: s3.IBucket;
+  readonly logBucket?: s3.ICfnBucket;
 
   /**
    * Monitoring configurations for the persistent application UI.

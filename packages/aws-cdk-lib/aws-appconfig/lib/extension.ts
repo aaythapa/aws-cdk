@@ -92,8 +92,8 @@ export class SqsDestination implements IEventDestination {
   public readonly type: SourceType;
   public readonly policyDocument?: iam.PolicyDocument;
 
-  constructor(queue: sqs.IQueue) {
-    this.extensionUri = queue.queueArn;
+  constructor(queue: sqs.ICfnQueue) {
+    this.extensionUri = queue.attrArn;
     this.type = SourceType.SQS;
     const policy = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
@@ -114,8 +114,8 @@ export class SnsDestination implements IEventDestination {
   public readonly type: SourceType;
   public readonly policyDocument?: iam.PolicyDocument;
 
-  constructor(topic: sns.ITopic) {
-    this.extensionUri = topic.topicArn;
+  constructor(topic: sns.ICfnTopic) {
+    this.extensionUri = topic.attrTopicArn;
     this.type = SourceType.SNS;
     const policy = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,

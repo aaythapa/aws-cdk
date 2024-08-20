@@ -2,6 +2,7 @@ import * as child_process from 'child_process';
 import * as path from 'path';
 import { Match, Template } from '../../assertions';
 import * as ecr from '../../aws-ecr';
+import * as s3 from '../../aws-s3';
 import * as cdk from '../../core';
 import * as cxapi from '../../cx-api';
 import * as lambda from '../lib';
@@ -16,82 +17,43 @@ describe('code', () => {
     });
   });
 
-  describe('lambda.Code.fromCustomCommand', () => {
-    let spawnSyncMock: jest.SpyInstance;
-    beforeEach(() => {
-      spawnSyncMock = jest.spyOn(child_process, 'spawnSync').mockReturnValue({
-        status: 0,
-        stderr: Buffer.from('stderr'),
-        stdout: Buffer.from('stdout'),
-        pid: 123,
-        output: ['stdout', 'stderr'],
-        signal: null,
-      });
-    });
-    afterEach(() => {
-      jest.restoreAllMocks();
-    });
-
-    test('fails if command is empty', () => {
-      // GIVEN
-      const command = [];
-
-      // THEN
-      expect(() => lambda.Code.fromCustomCommand('', command)).toThrow('command must contain at least one argument. For example, ["node", "buildFile.js"].');
-    });
-    test('properly splices arguments', () => {
-      // GIVEN
-      const command = 'node is a great command, wow'.split(' ');
-      lambda.Code.fromCustomCommand('', command);
-
-      // THEN
-      expect(spawnSyncMock).toHaveBeenCalledWith(
-        'node',
-        ['is', 'a', 'great', 'command,', 'wow'],
-      );
-    });
-    test('command of length 1 does not cause crash', () => {
-      // WHEN
-      lambda.Code.fromCustomCommand('', ['node']);
-
-      // THEN
-      expect(spawnSyncMock).toHaveBeenCalledWith('node', []);
-    });
-    test('properly splices arguments when commandOptions are included', () => {
-      // GIVEN
-      const command = 'node is a great command, wow'.split(' ');
-      const commandOptions = { commandOptions: { cwd: '/tmp', env: { SOME_KEY: 'SOME_VALUE' } } };
-      lambda.Code.fromCustomCommand('', command, commandOptions);
-
-      // THEN
-      expect(spawnSyncMock).toHaveBeenCalledWith(
-        'node',
-        ['is', 'a', 'great', 'command,', 'wow'],
-        commandOptions.commandOptions,
-      );
-    });
-    test('throws custom error message when spawnSync errors', () => {
-      // GIVEN
-      jest.restoreAllMocks(); // use the real spawnSync, which doesn't work in unit tests.
-      const command = ['whatever'];
-
-      // THEN
-      expect(() => lambda.Code.fromCustomCommand('', command)).toThrow(/Failed to execute custom command: .*/);
-    });
-    test('throws custom error message when spawnSync exits with non-zero status code', () => {
-      // GIVEN
-      const command = ['whatever'];
-      spawnSyncMock = jest.spyOn(child_process, 'spawnSync').mockReturnValue({
-        status: 1,
-        stderr: Buffer.from('stderr'),
-        stdout: Buffer.from('stdout'),
-        pid: 123,
-        output: ['stdout', 'stderr'],
-        signal: null,
+  describe('lambda.Code.fromBucket', () => {
+    test('compatible with IBucket', () => {
+      const app = new cdk.App();
+      const stack = new cdk.Stack(app);
+      const bucket = s3.Bucket.fromBucketName(stack, 'Bucket', 'mybucket');
+      new lambda.Function(stack, 'Func', {
+        code: lambda.Code.fromBucket(bucket, 'key'),
+        runtime: lambda.Runtime.NODEJS_LATEST,
+        handler: 'foom',
       });
 
-      // THEN
-      expect(() => lambda.Code.fromCustomCommand('', command)).toThrow('whatever exited with status: 1\n\nstdout: stdout\n\nstderr: stderr');
+      Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
+        Code: {
+          S3Bucket: 'mybucket',
+          S3Key: 'key',
+        },
+      });
+    });
+
+    test('compatible with ICfnBucket', () => {
+      const app = new cdk.App();
+      const stack = new cdk.Stack(app);
+      const cfnBucket: s3.ICfnBucket = new s3.CfnBucket(stack, 'CfnBucket', { bucketName: 'cfnbucket' });
+      new lambda.Function(stack, 'Func', {
+        code: lambda.Code.fromBucket(cfnBucket, 'key'),
+        runtime: lambda.Runtime.NODEJS_LATEST,
+        handler: 'foom',
+      });
+
+      Template.fromStack(stack).hasResourceProperties('AWS::Lambda::Function', {
+        Code: {
+          S3Bucket: {
+            Ref: 'CfnBucket',
+          },
+          S3Key: 'key',
+        },
+      });
     });
   });
 

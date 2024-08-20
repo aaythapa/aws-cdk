@@ -95,7 +95,7 @@ export interface TrailProps {
    *
    * @default - No notifications.
    */
-  readonly snsTopic?: sns.ITopic;
+  readonly snsTopic?: sns.ICfnTopic;
 
   /**
    * The name of the trail. We recommend customers do not set an explicit name.
@@ -114,7 +114,7 @@ export interface TrailProps {
    *
    * @default - if not supplied a bucket will be created with all the correct permisions
    */
-  readonly bucket?: s3.IBucket;
+  readonly bucket?: s3.ICfnBucket;
 
   /**
    * Specifies whether the trail is applied to all accounts in an organization in AWS Organizations, or only for the current AWS account.
@@ -200,7 +200,6 @@ export class InsightType {
  *
  */
 export class Trail extends Resource {
-
   /**
    * Create an event rule for when an event is recorded by any Trail in the account.
    *
@@ -251,7 +250,7 @@ export class Trail extends Resource {
 
     const cloudTrailPrincipal = new iam.ServicePrincipal('cloudtrail.amazonaws.com');
 
-    this.s3bucket = props.bucket || new s3.Bucket(this, 'S3', { enforceSSL: true });
+    this.s3bucket = props.bucket ? s3.Bucket.fromCfnBucket(props.bucket) : new s3.Bucket(this, 'S3', { enforceSSL: true });
 
     this.s3bucket.addToResourcePolicy(new iam.PolicyStatement({
       resources: [this.s3bucket.bucketArn],
@@ -270,23 +269,7 @@ export class Trail extends Resource {
       },
     }));
 
-    if (props.isOrganizationTrail) {
-      this.s3bucket.addToResourcePolicy(new iam.PolicyStatement({
-        resources: [this.s3bucket.arnForObjects(
-          `AWSLogs/${props.orgId}/*`,
-        )],
-        actions: ['s3:PutObject'],
-        principals: [cloudTrailPrincipal],
-        conditions: {
-          StringEquals: {
-            's3:x-amz-acl': 'bucket-owner-full-control',
-            'aws:SourceArn': `arn:${this.stack.partition}:cloudtrail:${this.s3bucket.stack.region}:${this.s3bucket.stack.account}:trail/${props.trailName}`,
-          },
-        },
-      }));
-    }
-
-    this.topic = props.snsTopic;
+    this.topic = props.snsTopic ? sns.Topic.fromCfnTopic(props.snsTopic) : undefined;
     if (this.topic) {
       this.topic.grantPublish(cloudTrailPrincipal);
     }
@@ -445,7 +428,7 @@ export class Trail extends Resource {
    */
   public addS3EventSelector(s3Selector: S3EventSelector[], options: AddEventSelectorOptions = {}) {
     if (s3Selector.length === 0) { return; }
-    const dataResourceValues = s3Selector.map((sel) => `${sel.bucket.bucketArn}/${sel.objectPrefix ?? ''}`);
+    const dataResourceValues = s3Selector.map((sel) => `${sel.bucket.attrArn}/${sel.objectPrefix ?? ''}`);
     return this.addEventSelector(DataResourceType.S3_OBJECT, dataResourceValues, options);
   }
 
@@ -528,7 +511,7 @@ export enum ManagementEventSources {
  */
 export interface S3EventSelector {
   /** S3 bucket */
-  readonly bucket: s3.IBucket;
+  readonly bucket: s3.ICfnBucket;
 
   /**
    * Data events for objects whose key matches this prefix will be logged.
